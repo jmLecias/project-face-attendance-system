@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Face Recognition</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Live Video Feed</h1>
+    <div class="video-feed">
+        <img id="feed" src="{{ url_for('video_feed') }}" alt="Live Video Feed">
+    </div>
+    <br />
+    <button id="">Capture Image</button>
+    <div id="result"></div>
+    <script>
+        document.getElementById('capture').addEventListener('click', function() {
+            fetch('/capture', { method: 'POST' })
+            .then(() => {
+                return fetch('/detect-faces', { method: 'POST' });
+            })
+            .then(response => response.json())
+            .then(data => {
+                return fetch('/recognize-face', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data), 
+                });
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+            });
+        });
+    </script>
+</body>
+</html>
