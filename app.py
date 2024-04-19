@@ -1,4 +1,4 @@
-from flask import Flask, render_template, Response, request, send_from_directory, abort
+from flask import Flask, render_template, Response, request, send_from_directory, abort, jsonify
 from flask_cors import CORS
 from deepface import DeepFace
 from retinaface import RetinaFace
@@ -10,18 +10,27 @@ import pandas as pd
 import os
 import shutil
 import json
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 CORS(app)
 
-# cam = cv2.VideoCapture(0)
-cam = cv2.VideoCapture('rtsp://CAPSTONE:@CAPSTONE1@192.168.1.2:554/live/ch00_0') # Apartment Wifi
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['CAPTURES_FOLDER'] = 'uploads/captures'
+app.config['DETECTIONS_FOLDER'] = 'faces/detections'
+app.config['FACE_DATABASE'] = 'faces/database/class1'
+
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['CAPTURES_FOLDER'], exist_ok=True)
+os.makedirs(app.config['DETECTIONS_FOLDER'], exist_ok=True)
+os.makedirs(app.config['FACE_DATABASE'], exist_ok=True)
+    
+
+cam = cv2.VideoCapture(0)
+# cam = cv2.VideoCapture('rtsp://CAPSTONE:@CAPSTONE1@192.168.1.2:554/live/ch00_0') # Apartment Wifi
 # cam = cv2.VideoCapture('rtsp://CAPSTONE:@CAPSTONE1@192.168.254.104:554/live/ch00_0') # Home wifi
 
 output_folder = 'static'
-face_db_path = os.path.join("face-database", "class1")
-detections_dir = os.path.join(output_folder, "detections")
-
 
 @app.route('/')
 def index():
@@ -60,19 +69,20 @@ def video_feed():
 @app.route('/recognize-faces', methods=['POST'])
 def recognize_faces():
     print("Recognizing face...")
+    results = []
 
+    # Get faces and captured_path from request
     data = request.get_json()
     faces = data.get('faces')
     captured_path = data.get('capturedPath')
     
-    results = []
-
-    og_frame = cv2.imread(os.path.join(output_folder, captured_path))
-    frame = cv2.resize(og_frame, (1280, 720))
+    # Remake the 'faces/detections' folder if not exists
+    if not os.path.exists(app.config["DETECTIONS_FOLDER"]):
+        os.makedirs(app.config["DETECTIONS_FOLDER"])
     
-    if not os.path.exists(detections_dir):
-        os.makedirs(detections_dir)
-    
+    # Loop through every face from detections, crop them using 'facial_area'
+    # Save each detected face temporarily in 'faces/detections'
+    frame = cv2.imread(captured_path)
     for face in faces:
         face_id = face['face_id']
         face_info = face['face_info']
@@ -80,12 +90,12 @@ def recognize_faces():
         face_img = frame[facial_area[1]:facial_area[3], facial_area[0]:facial_area[2]]
             
         new_face_id = f"{face_id}-{int(time.time())}.jpg"
-        temp_face_img_path = os.path.join(detections_dir, new_face_id)
+        temp_face_img_path = os.path.join(app.config["DETECTIONS_FOLDER"], new_face_id)
         cv2.imwrite(temp_face_img_path, face_img)
             
         result = DeepFace.find(
             img_path=temp_face_img_path, 
-            db_path=face_db_path,
+            db_path=app.config["FACE_DATABASE"],
             model_name="ArcFace",
             detector_backend="retinaface",
             enforce_detection=False,
@@ -101,8 +111,6 @@ def recognize_faces():
         else:
             results.append({"detected": new_face_id, "identity": None, "accuracy": 0})
             print(f"Face {face_id} does not have any matches in face database.")
-    
-    print(results)
     
     max_accuracies = {}
     for result in results:
@@ -125,10 +133,10 @@ def recognize_faces():
     
 @app.route('/recognized-face/<filename>')
 def recognized_face(filename):
-    file_path = os.path.join(face_db_path, filename)
+    file_path = os.path.join(app.config["FACE_DATABASE"], filename)
     
     if os.path.exists(file_path):
-        return send_from_directory(directory=face_db_path, path=filename)
+        return send_from_directory(directory=app.config["FACE_DATABASE"], path=filename)
     else:
         abort(404)
         
@@ -137,34 +145,39 @@ def recognized_face(filename):
 def detect_faces():
     print("Detecting faces...")
     
-    data = request.get_json()
-    captured_path = data.get('capturedPath') 
+    # Check if 'capturedFrame' was sent from request
+    if 'capturedFrame' not in request.files:
+        return jsonify({'error': 'No capturedFrame part'}), 400
     
-    captured_timestamp = int(captured_path.split(".")[0])
-    captured_datetime = datetime.fromtimestamp(captured_timestamp)
-    captured_datetime = captured_datetime.strftime("%m-%d-%Y %a %I:%M:%S %p")
+    # If exists, check for its filename
+    captured_file = request.files['capturedFrame']
+    if captured_file.filename == '':
+        return jsonify({'error': 'No selected image'}), 400
     
-    if os.path.exists(detections_dir):
-        shutil.rmtree(detections_dir)
+    # Clean the filename, then save to 'uploads/captures'
+    filename = secure_filename(captured_file.filename)
+    captured_path = os.path.join(app.config['CAPTURES_FOLDER'], filename)
+    captured_file.save(captured_path)
+    
+    # Delete previous face detections, if there is any
+    if os.path.exists(app.config["DETECTIONS_FOLDER"]):
+        shutil.rmtree(app.config["DETECTIONS_FOLDER"])
 
-    og_frame = cv2.imread(os.path.join(output_folder, captured_path))
-    frame = cv2.resize(og_frame, (1280, 720))
-
+    # Read save captured_file, detect faces, and save to list
+    frame = cv2.imread(captured_path)
     faces = RetinaFace.detect_faces(frame)
-    
     faces_list = [{"face_id": str(face_id), "face_info": face_info} for face_id, face_info in faces.items()]
-    
-    json_data = json.dumps({"faces": faces_list, "datetime": captured_datetime, "capturedPath": captured_path}, cls=NumpyArrayEncoder)
-    
+        
+    json_data = json.dumps({"faces": faces_list, "capturedPath": captured_path}, cls=NumpyArrayEncoder)
     return Response(json_data, mimetype='application/json')
 
 
 @app.route('/detected-face/<filename>')
-def dete(filename):
-    file_path = os.path.join(detections_dir, filename)
+def detected_face(filename):
+    file_path = os.path.join(app.config["DETECTIONS_FOLDER"], filename)
     
     if os.path.exists(file_path):
-        return send_from_directory(directory=detections_dir, path=filename)
+        return send_from_directory(directory=app.config["DETECTIONS_FOLDER"], path=filename)
     else:
         abort(404)
 

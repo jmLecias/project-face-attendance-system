@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import face_api, { faceApiBaseUrl } from '../api/face_api';
 import { ToastContainer, toast } from 'react-toastify';
 import Button from 'react-bootstrap/Button';
@@ -14,14 +14,74 @@ import UnknownItem from '../components/items/UnknownItem';
 import { RiLiveFill } from "react-icons/ri";
 import { FaCheckCircle } from "react-icons/fa";
 
+import JSMpeg from "@cycjimmy/jsmpeg-player";
+import axios from "axios";
+
 const IndexPage = () => {
+    const videoRef = useRef(null);
+
+    // const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.1.2:554/live/ch00_0"; // Appartment Network
+    const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.254.104:554/live/ch00_0"; // Home Network
+
+    useEffect(() => {
+        axios.get(`http://127.0.0.1:3002/discover-devices`).then((devices) => {
+            console.log(devices);
+        });
+
+        const url = 'ws://127.0.0.1:9999';
+        let canvas = document.getElementById("stream-canvas");
+        const player = new JSMpeg.Player(url, { canvas: canvas, preserveDrawingBuffer: true });
+
+        startRTSPFeed();
+
+        return () => {
+            stopRTSPFeed()
+        }
+    }, []);
+
+
+    const httpRequest = (url) => {
+        axios.get(`http://127.0.0.1:3002/stream?rtsp=${url}`);
+    };
+
+    const startRTSPFeed = () => {
+        httpRequest(rtspurl);
+    };
+
+    const stopRTSPFeed = () => {
+        httpRequest("stop");
+    };
+
+
+    // useEffect(() => {
+    //     // Request access to the camera
+    //     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    //         .then(stream => {
+    //             // Assign the stream to the video element
+    //             if (videoRef.current) {
+    //                 videoRef.current.srcObject = stream;
+    //             }
+    //         })
+    //         .catch(error => {
+    //             console.error("Error accessing media devices.", error);
+    //         });
+
+    //     // Cleanup function to stop the stream when the component unmounts
+    //     return () => {
+    //         if (videoRef.current && videoRef.current.srcObject) {
+    //             const tracks = videoRef.current.srcObject.getTracks();
+    //             tracks.forEach(track => track.stop());
+    //         }
+    //     };
+    // }, []); 
+
+
 
     const [isScanning, setIsScanning] = useState(false);
     const [scanStatus, setScanStatus] = useState(null);
     const [detection, setDetection] = useState(null);
+    const [datetime, setDateTime] = useState(null);
     const [verifiedFaces, setVerifiedFaces] = useState([]);
-
-    const [recognized, setRecognized] = useState([]);
 
     const renderRecognized = () => {
         return verifiedFaces.map((face) => {
@@ -42,18 +102,61 @@ const IndexPage = () => {
         });
     }
 
+    const captureFrame = () => {
+        return new Promise((resolve, reject) => {
+            const canvas = document.getElementById("stream-canvas");
+            requestAnimationFrame(() => {
+                canvas.toBlob(resolve, 'image/png');
+            });
+        });
+    };
+
     const handleCapture = async () => {
         setIsScanning(true);
         setDetection(null);
         setVerifiedFaces([]);
+        setDateTime(null)
 
-        await face_api.post('/capture')
-            .then(async (capturedPath) => {
-                const data = { capturedPath: capturedPath.data.capturedPath }
+        const date = new Date();
 
-                setScanStatus("detecting");
-                const response = await face_api.post('/detect-faces', data);
-                const newDetection = response.data //{faces, datetime}
+        const dateOptions = {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        };
+
+        const timeOptions = {
+            hour: 'numeric',
+            minute: 'numeric',
+            second: 'numeric',
+            hour12: true
+        };
+
+        const options = {
+            ...dateOptions,
+            ...timeOptions
+        };
+
+        const formattedDate = date.toLocaleString('en-US', options);
+        
+        const imageBlob = await captureFrame();
+
+        const captureData = new FormData();
+        captureData.append('capturedFrame', imageBlob, formatDateTime(date) + ".png")
+        captureData.append('datetime', date)
+
+        const config = {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        };
+
+        setDateTime(formattedDate);
+        setScanStatus("detecting");
+
+        await face_api.post('/detect-faces', captureData, config)
+            .then((response) => {
+                const newDetection = response.data;
 
                 setDetection(newDetection);
 
@@ -74,8 +177,7 @@ const IndexPage = () => {
                 }
 
                 return newDetection;
-            })
-            .then(async (detection) => {
+            }).then(async (detection) => {
                 setScanStatus("recognizing");
                 const response = await face_api.post('/recognize-faces', JSON.stringify(detection), {
                     headers: {
@@ -84,7 +186,7 @@ const IndexPage = () => {
                 });
                 const results = response.data.results
 
-                if (!(results.length > 0)) {
+                if (!(results.filter((face) => face.identity) > 0)) {
                     toast.error("No faces were recognized", {
                         autoClose: 2500,
                         closeOnClick: true,
@@ -107,6 +209,18 @@ const IndexPage = () => {
                 setIsScanning(false);
                 setScanStatus(null);
             })
+
+    }
+
+    function formatDateTime(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+
+        return `${year}-${month}-${day}--${hours}-${minutes}-${seconds}`;
     }
 
     return (
@@ -124,7 +238,9 @@ const IndexPage = () => {
                     <div className='d-flex align-items-start w-100 mt-3' >
                         <div className='w-50'>
                             <div className="video-feed mb-3">
-                                <img id="feed" src={faceApiBaseUrl + "/video-feed"} alt="Live Video Feed" />
+                                {/* <img id="feed" src={faceApiBaseUrl + "/video-feed"} alt="Live Video Feed" /> */}
+                                {/* <video ref={videoRef} autoPlay playsInline muted /> */}
+                                <canvas id="stream-canvas"></canvas>
                             </div>
                             <div className='d-flex align-items-center mb-3'>
                                 <Button
@@ -138,18 +254,6 @@ const IndexPage = () => {
                                 >
                                     {(isScanning) ? "Taking attendance..." : "Take attendance"}
                                 </Button>
-
-                                {(isScanning && scanStatus === "detecting") && (
-                                    <div className='d-flex align-items-center'>
-                                        <Spinner
-                                            className='me-2'
-                                            animation="border"
-                                            variant="dark"
-                                            size='sm'
-                                        />
-                                        <span className='fs-6'>Detecting faces...</span>
-                                    </div>
-                                )}
 
                                 {(isScanning && scanStatus === "recognizing") && (
                                     <div className='d-flex align-items-center'>
@@ -184,8 +288,8 @@ const IndexPage = () => {
                         </div>
                         <div className="w-50 ms-3">
                             <div className='fs-4 fw-bold'>Attendance</div>
-                            {detection && (
-                                <div className='fs-6 mb-3 opacity-75'>{detection.datetime}</div>
+                            {datetime && (
+                                <div className='fs-6 mb-3 opacity-75'>{datetime}</div>
                             )}
                             {(verifiedFaces.length > 0) && (
                                 renderRecognized()
@@ -198,12 +302,6 @@ const IndexPage = () => {
                                 </div>
                             )}
                             {isScanning && (
-                                // <div className='w-100 p-5 d-flex align-items-center justify-content-center'>
-                                //     <Spinner
-                                //         animation="border"
-                                //         variant="dark"
-                                //     />
-                                // </div>
                                 <>
                                     <RecognizedLoadingItem />
                                     <RecognizedLoadingItem />
