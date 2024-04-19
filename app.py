@@ -14,8 +14,9 @@ import json
 app = Flask(__name__)
 CORS(app)
 
-cam = cv2.VideoCapture(0)
-# cam = cv2.VideoCapture('rtsp://CAPSTONE:@CAPSTONE1@192.168.1.2:554/live/ch00_0')
+# cam = cv2.VideoCapture(0)
+cam = cv2.VideoCapture('rtsp://CAPSTONE:@CAPSTONE1@192.168.1.2:554/live/ch00_0') # Apartment Wifi
+# cam = cv2.VideoCapture('rtsp://CAPSTONE:@CAPSTONE1@192.168.254.104:554/live/ch00_0') # Home wifi
 
 output_folder = 'static'
 face_db_path = os.path.join("face-database", "class1")
@@ -64,8 +65,6 @@ def recognize_faces():
     faces = data.get('faces')
     captured_path = data.get('capturedPath')
     
-    print(data)
-    print(captured_path)
     results = []
 
     og_frame = cv2.imread(os.path.join(output_folder, captured_path))

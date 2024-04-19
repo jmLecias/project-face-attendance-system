@@ -8,6 +8,7 @@ import ListenerHeader from '../components/headers/ListenerHeader';
 import ListenerSidebar from '../components/sidebars/ListenerSidebar';
 
 import RecognizedItem from '../components/items/RecognizedItem';
+import RecognizedLoadingItem from '../components/items/RecognizedLoadingItem';
 import UnknownItem from '../components/items/UnknownItem';
 
 import { RiLiveFill } from "react-icons/ri";
@@ -90,6 +91,13 @@ const IndexPage = () => {
                         hideProgressBar: true,
                         position: 'bottom-right'
                     });
+                } else {
+                    toast.info(results.length + " face(s) were recognized", {
+                        autoClose: 2500,
+                        closeOnClick: true,
+                        hideProgressBar: true,
+                        position: 'bottom-right'
+                    });
                 }
 
                 setVerifiedFaces(results);
@@ -118,45 +126,50 @@ const IndexPage = () => {
                             <div className="video-feed mb-3">
                                 <img id="feed" src={faceApiBaseUrl + "/video-feed"} alt="Live Video Feed" />
                             </div>
-                            <Button
-                                onClick={() => handleCapture()}
-                                disabled={isScanning}
-                                style={{ backgroundColor: 'var(--primary-color)', fontSize: '18px', marginBottom: '10px ' }}
-                            >
-                                <div className='d-flex align-items-center'>
-                                    {(isScanning) ? "Scanning for faces..." : "Scan for faces"}
-                                </div>
-                            </Button>
-                            {(isScanning && scanStatus === "detecting") && (
-                                <div className='d-flex align-items-center'>
-                                    <Spinner
-                                        className='me-2'
-                                        animation="border"
-                                        variant="dark"
-                                        size='sm'
-                                    />
-                                    <span className='fs-6'>Detecting faces...</span>
-                                </div>
-                            )}
+                            <div className='d-flex align-items-center mb-3'>
+                                <Button
+                                    onClick={() => handleCapture()}
+                                    disabled={isScanning}
+                                    style={{
+                                        backgroundColor: 'var(--primary-color)',
+                                        fontSize: '18px',
+                                        marginRight: '10px ',
+                                    }}
+                                >
+                                    {(isScanning) ? "Taking attendance..." : "Take attendance"}
+                                </Button>
+
+                                {(isScanning && scanStatus === "detecting") && (
+                                    <div className='d-flex align-items-center'>
+                                        <Spinner
+                                            className='me-2'
+                                            animation="border"
+                                            variant="dark"
+                                            size='sm'
+                                        />
+                                        <span className='fs-6'>Detecting faces...</span>
+                                    </div>
+                                )}
+
+                                {(isScanning && scanStatus === "recognizing") && (
+                                    <div className='d-flex align-items-center'>
+                                        <Spinner
+                                            className='me-2'
+                                            animation="border"
+                                            variant="dark"
+                                            size='sm'
+                                        />
+                                        <span className='fs-6'>Recognizing detections...</span>
+                                    </div>
+                                )}
+                            </div>
 
                             {(detection && !isScanning) && (
                                 <div className='d-flex align-items-center' style={{ color: 'green' }}>
                                     <FaCheckCircle className='me-2' size={17} />
-                                    <span className='fs-6'>{(detection)? detection.faces.length : ''} face(s) were detected.</span>
+                                    <span className='fs-6'>{(detection) ? detection.faces.length : ''} face(s) were detected.</span>
                                 </div>
 
-                            )}
-
-                            {(isScanning && scanStatus === "recognizing") && (
-                                <div className='d-flex align-items-center'>
-                                    <Spinner
-                                        className='me-2'
-                                        animation="border"
-                                        variant="dark"
-                                        size='sm'
-                                    />
-                                    <span className='fs-6'>Recognizing detections...</span>
-                                </div>
                             )}
 
                             {(verifiedFaces.length > 0 && !isScanning) && (
@@ -185,12 +198,17 @@ const IndexPage = () => {
                                 </div>
                             )}
                             {isScanning && (
-                                <div className='w-100 p-5 d-flex align-items-center justify-content-center'>
-                                    <Spinner
-                                        animation="border"
-                                        variant="dark"
-                                    />
-                                </div>
+                                // <div className='w-100 p-5 d-flex align-items-center justify-content-center'>
+                                //     <Spinner
+                                //         animation="border"
+                                //         variant="dark"
+                                //     />
+                                // </div>
+                                <>
+                                    <RecognizedLoadingItem />
+                                    <RecognizedLoadingItem />
+                                    <RecognizedLoadingItem />
+                                </>
                             )}
                         </div>
                     </div>

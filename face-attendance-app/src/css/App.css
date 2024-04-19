@@ -11,19 +11,7 @@
   --primary-background-nav-color: #2d2d2d;
   --card-background-color: rgba(50, 50, 50, 0.4);
   --background-input-color: #282727;
-  --text-input-color: #D9D9D9;
-  --text-option-color: #D9D9D9;
-  --text-paragraph-color: #BCBCBC;
-  --text-modal-color: #000;
-  --text-secondary-color: #A82122;
-  --text-cancel-color: #1E1E1E;
   --text-color: #ffffff;
-  --primary-gradient: linear-gradient(#9e0e0e, #f94141);
-  --background-opacity-color: #00000080;
-  --container-padding: 20px;
-  --container-border-radius: 10px;
-  --container-padding: 1.5em;
-  --player-side-background-color: rgba(45, 45, 45, 0.4);
   --background-light: #dbf1fc;
 }
 
@@ -125,14 +113,55 @@ header {
   color: var(--background-light);
 }
 
+.loading-recognition-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  cursor: pointer;
+  background-color: #4f788a;
+  color: #1d4c65;
+  border-radius: 10px;
+}
+
+.loading-cover {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  background-color: #1d4c65;
+  opacity: 0.5;
+  overflow: hidden;
+}
+
 .threel-item-cover {
   width: 100%;
   aspect-ratio: 1 / 1;
   border-radius: 10px;
-  background-color: #D9D9D9;
+  background-color: #b4b4b4;
   overflow: hidden;
   transition: all 0.2s ease-in-out;
   border: 2px solid var(--background-light);
+}
+
+@keyframes waveAnimation {
+
+  /* flame pulses */
+  0% {
+    opacity: 0.9;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+
+  100% {
+    opacity: 0.9;
+  }
+}
+
+.animate-wave {
+  opacity: 1;
+  animation: waveAnimation 3s infinite;
 }
 
 .threel-item-cover img {

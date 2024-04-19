@@ -8,7 +8,7 @@ const ListenerHeader = () => {
 
     return (
         <header className='listener-header'>
-            <span className='logo-text'>@ FACE_Attendance</span>
+            <span className='logo-text'>@ RESight</span>
         </header>
     );
 }
