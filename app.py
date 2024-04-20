@@ -129,16 +129,6 @@ def recognize_faces():
     json_data = json.dumps({"results": results}, cls=NumpyArrayEncoder)
     
     return Response(json_data, mimetype='application/json')
-
-    
-@app.route('/recognized-face/<filename>')
-def recognized_face(filename):
-    file_path = os.path.join(app.config["FACE_DATABASE"], filename)
-    
-    if os.path.exists(file_path):
-        return send_from_directory(directory=app.config["FACE_DATABASE"], path=filename)
-    else:
-        abort(404)
         
 
 @app.route('/detect-faces', methods=['POST'])
@@ -171,6 +161,16 @@ def detect_faces():
     json_data = json.dumps({"faces": faces_list, "capturedPath": captured_path}, cls=NumpyArrayEncoder)
     return Response(json_data, mimetype='application/json')
 
+
+@app.route('/recognized-face/<filename>')
+def recognized_face(filename):
+    file_path = os.path.join(app.config["FACE_DATABASE"], filename)
+    
+    if os.path.exists(file_path):
+        return send_from_directory(directory=app.config["FACE_DATABASE"], path=filename)
+    else:
+        abort(404)
+        
 
 @app.route('/detected-face/<filename>')
 def detected_face(filename):

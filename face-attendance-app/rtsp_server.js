@@ -1,23 +1,10 @@
 const express = require("express");
 const Stream = require("node-rtsp-stream");
 const cors = require("cors");
-const onvif = require('onvif');
 
 const app = express();
 const port = 3002;
 let stream = null;
-
-function discoverDevices() {
-    return new Promise((resolve, reject) => {
-        onvif.Discovery.probe((err, cams) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(cams);
-            }
-        });
-    });
-}
 
 app.use(cors({
     origin: "http://localhost:3000",

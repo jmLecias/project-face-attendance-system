@@ -24,10 +24,6 @@ const IndexPage = () => {
     const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.254.104:554/live/ch00_0"; // Home Network
 
     useEffect(() => {
-        axios.get(`http://127.0.0.1:3002/discover-devices`).then((devices) => {
-            console.log(devices);
-        });
-
         const url = 'ws://127.0.0.1:9999';
         let canvas = document.getElementById("stream-canvas");
         const player = new JSMpeg.Player(url, { canvas: canvas, preserveDrawingBuffer: true });
@@ -84,10 +80,11 @@ const IndexPage = () => {
     const [verifiedFaces, setVerifiedFaces] = useState([]);
 
     const renderRecognized = () => {
-        return verifiedFaces.map((face) => {
+        return verifiedFaces.map((face, index) => {
             if (face.identity !== null) {
                 return (
                     <RecognizedItem
+                        key={index}
                         identityPath={face.identity}
                         detected={face.detected}
                     />
@@ -95,6 +92,7 @@ const IndexPage = () => {
             } else {
                 return (
                     <UnknownItem
+                        key={index}
                         detected={face.detected}
                     />
                 )
@@ -138,7 +136,7 @@ const IndexPage = () => {
         };
 
         const formattedDate = date.toLocaleString('en-US', options);
-        
+
         const imageBlob = await captureFrame();
 
         const captureData = new FormData();
@@ -186,7 +184,7 @@ const IndexPage = () => {
                 });
                 const results = response.data.results
 
-                if (!(results.filter((face) => face.identity) > 0)) {
+                if (results.filter((face) => face.identity).length === 0) {
                     toast.error("No faces were recognized", {
                         autoClose: 2500,
                         closeOnClick: true,
@@ -254,6 +252,18 @@ const IndexPage = () => {
                                 >
                                     {(isScanning) ? "Taking attendance..." : "Take attendance"}
                                 </Button>
+
+                                {(isScanning && scanStatus === "detecting") && (
+                                    <div className='d-flex align-items-center'>
+                                        <Spinner
+                                            className='me-2'
+                                            animation="border"
+                                            variant="dark"
+                                            size='sm'
+                                        />
+                                        <span className='fs-6'>Detecting faces...</span>
+                                    </div>
+                                )}
 
                                 {(isScanning && scanStatus === "recognizing") && (
                                     <div className='d-flex align-items-center'>
