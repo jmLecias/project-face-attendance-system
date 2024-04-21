@@ -4,7 +4,7 @@ import StorageService from '../services/StorageService';
 const ss = new StorageService();
 
 // const serverIp = '172.23.249.243'; 
-const serverIp = '127.0.0.1';
+const serverIp = '192.168.254.101';
 const flaskURL = `http://${((serverIp !== '')? serverIp: 'localhost')}:5000`;
 const faceApiBaseUrl = flaskURL;
 
@@ -28,4 +28,4 @@ face_api.interceptors.response.use(
 );
 
 export default face_api;
-export { faceApiBaseUrl };
+export { faceApiBaseUrl, serverIp };

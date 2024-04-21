@@ -25,12 +25,9 @@ os.makedirs(app.config['CAPTURES_FOLDER'], exist_ok=True)
 os.makedirs(app.config['DETECTIONS_FOLDER'], exist_ok=True)
 os.makedirs(app.config['FACE_DATABASE'], exist_ok=True)
     
-
-cam = cv2.VideoCapture(0)
-# cam = cv2.VideoCapture('rtsp://CAPSTONE:@CAPSTONE1@192.168.1.2:554/live/ch00_0') # Apartment Wifi
-# cam = cv2.VideoCapture('rtsp://CAPSTONE:@CAPSTONE1@192.168.254.104:554/live/ch00_0') # Home wifi
-
 output_folder = 'static'
+
+
 
 @app.route('/')
 def index():
@@ -47,23 +44,6 @@ class NumpyArrayEncoder(json.JSONEncoder):
         else:
             return super(NumpyArrayEncoder, self).default(obj)
         
-        
-def gen_frames():
-    global cam
-    while True:
-        ret, frame = cam.read()
-        if not ret:
-            break
-        else:
-            ret, buffer = cv2.imencode('.jpg', frame)
-            frame = buffer.tobytes()
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
-
-@app.route('/video-feed')
-def video_feed():
-    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
 @app.route('/recognize-faces', methods=['POST'])
@@ -74,7 +54,6 @@ def recognize_faces():
     # Get faces and captured_path from request
     data = request.get_json()
     faces = data.get('faces')
-    captured_path = data.get('capturedPath')
     
     # Remake the 'faces/detections' folder if not exists
     if not os.path.exists(app.config["DETECTIONS_FOLDER"]):
@@ -82,11 +61,13 @@ def recognize_faces():
     
     # Loop through every face from detections, crop them using 'facial_area'
     # Save each detected face temporarily in 'faces/detections'
-    frame = cv2.imread(captured_path)
     for face in faces:
         face_id = face['face_id']
         face_info = face['face_info']
+        origin = face['origin']
         facial_area = face_info.get('facial_area', [0, 0, 0, 0])
+        
+        frame = cv2.imread(origin)
         face_img = frame[facial_area[1]:facial_area[3], facial_area[0]:facial_area[2]]
             
         new_face_id = f"{face_id}-{int(time.time())}.jpg"
@@ -136,29 +117,34 @@ def detect_faces():
     print("Detecting faces...")
     
     # Check if 'capturedFrame' was sent from request
-    if 'capturedFrame' not in request.files:
-        return jsonify({'error': 'No capturedFrame part'}), 400
-    
-    # If exists, check for its filename
-    captured_file = request.files['capturedFrame']
-    if captured_file.filename == '':
-        return jsonify({'error': 'No selected image'}), 400
-    
-    # Clean the filename, then save to 'uploads/captures'
-    filename = secure_filename(captured_file.filename)
-    captured_path = os.path.join(app.config['CAPTURES_FOLDER'], filename)
-    captured_file.save(captured_path)
+    if 'capturedFrames' not in request.files:
+        return jsonify({'error': 'No capturedFrames part'}), 400
     
     # Delete previous face detections, if there is any
     if os.path.exists(app.config["DETECTIONS_FOLDER"]):
         shutil.rmtree(app.config["DETECTIONS_FOLDER"])
-
-    # Read save captured_file, detect faces, and save to list
-    frame = cv2.imread(captured_path)
-    faces = RetinaFace.detect_faces(frame)
-    faces_list = [{"face_id": str(face_id), "face_info": face_info} for face_id, face_info in faces.items()]
         
-    json_data = json.dumps({"faces": faces_list, "capturedPath": captured_path}, cls=NumpyArrayEncoder)
+    all_faces_list = []
+    
+    # If exists, check for its filename
+    for captured_file in request.files.getlist('capturedFrames'):
+        if captured_file.filename == '':
+            return jsonify({'error': 'No selected image'}), 400
+    
+        # Clean the filename, then save to 'uploads/captures'
+        filename = secure_filename(captured_file.filename)
+        captured_path = os.path.join(app.config['CAPTURES_FOLDER'], filename)
+        captured_file.save(captured_path)
+
+        # Read save captured_file, detect faces, and save to list
+        frame = cv2.imread(captured_path)
+        faces = RetinaFace.detect_faces(frame)
+        faces_list = [{"face_id": str(face_id), "face_info": face_info, "origin": captured_path} for face_id, face_info in faces.items()]
+        
+        # Append faces_list to all_faces_list
+        all_faces_list.extend(faces_list)
+        
+    json_data = json.dumps({"faces": all_faces_list}, cls=NumpyArrayEncoder)
     return Response(json_data, mimetype='application/json')
 
 
@@ -200,11 +186,5 @@ def capture():
     return Response(json_data, mimetype='application/json')
 
 
-with app.app_context():
-    if not cam.isOpened():
-        print("Cannot open camera")
-        exit()
-
 if __name__ == '__main__':
-    app.run(debug=True)
-    cam.release()
+    app.run(debug=True, host='0.0.0.0')

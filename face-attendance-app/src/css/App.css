@@ -35,8 +35,12 @@ body {
 .video-feed {
   aspect-ratio: 3 / 2;
   width: 100%;
-  background-color: #fff;
+  background-color: #000000;
   border-radius: 10px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
 }
 
@@ -58,7 +62,7 @@ header {
 }
 
 .logo-text {
-  font-size: 20px;
+  font-size: 23px;
   font-weight: bold;
   color: var(--primary-color);
 }
@@ -68,7 +72,7 @@ header {
   width: 100%;
   display: grid;
   grid-template-columns: auto 1fr auto;
-  grid-template-rows: 50px minmax(500px, 1fr) auto;
+  grid-template-rows: 60px minmax(500px, 1fr) auto;
   grid-template-areas:
     "header header header"
     "sidebar main main"

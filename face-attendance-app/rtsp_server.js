@@ -4,21 +4,13 @@ const cors = require("cors");
 
 const app = express();
 const port = 3002;
+const serverIp = '192.168.254.101'
 let stream = null;
 
 app.use(cors({
-    origin: "http://localhost:3000",
+    origin: "*",
     credentials: true,
 }));
-
-app.get('/discover-devices', async (req, res) => {
-    try {
-        const devices = await discoverDevices();
-        res.json(devices);
-    } catch (error) {
-        res.status(500).send('Error discovering devices' + error);
-    }
-});
 
 app.get("/stream", (req, res) => {
     const newRtspStreamUrl = req.query.rtsp;
@@ -35,15 +27,15 @@ app.get("/stream", (req, res) => {
             ffmpegOptions: {
                 '-vf': 'scale=1920:1080',
                 '-q:v': 22,
-                '-b': '2000K'
+                '-b': '4000K'
             }
         });
         currentRtspStreamUrl = newRtspStreamUrl;
     }
 
-    res.send(200).json({ url: `ws://127.0.0.1:9999` });
+    return res.status(200).json({ url: `ws://${serverIp}:9999` });
 });
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on port ${port}`);
 });

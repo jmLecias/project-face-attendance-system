@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import face_api, { faceApiBaseUrl } from '../api/face_api';
+import face_api, { faceApiBaseUrl, serverIp } from '../api/face_api';
 import { ToastContainer, toast } from 'react-toastify';
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
@@ -19,16 +19,24 @@ import axios from "axios";
 
 const IndexPage = () => {
     const videoRef = useRef(null);
+    const [rtspLoading, setRtspLoading] = useState(true);
 
+    // const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.1.2:554/live/ch00_0"; // Appartment Network
+    // const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.1.2:554/live/ch00_0"; // Appartment Network
+    // const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.1.2:554/live/ch00_0"; // Appartment Network
     // const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.1.2:554/live/ch00_0"; // Appartment Network
     const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.254.104:554/live/ch00_0"; // Home Network
 
     useEffect(() => {
-        const url = 'ws://127.0.0.1:9999';
-        let canvas = document.getElementById("stream-canvas");
-        const player = new JSMpeg.Player(url, { canvas: canvas, preserveDrawingBuffer: true });
-
         startRTSPFeed();
+        const url = 'ws://' + serverIp + ':9999';
+        let canvas = document.getElementById("stream-canvas");
+        const player = new JSMpeg.Player(String(url), {
+            canvas: canvas,
+            preserveDrawingBuffer: true,
+            onVideoDecode: () => setRtspLoading(false),
+        });
+
 
         return () => {
             stopRTSPFeed()
@@ -36,8 +44,8 @@ const IndexPage = () => {
     }, []);
 
 
-    const httpRequest = (url) => {
-        axios.get(`http://127.0.0.1:3002/stream?rtsp=${url}`);
+    const httpRequest = async (url) => {
+        axios.get(`http://${serverIp}:3002/stream?rtsp=${url}`);
     };
 
     const startRTSPFeed = () => {
@@ -49,27 +57,28 @@ const IndexPage = () => {
     };
 
 
-    // useEffect(() => {
-    //     // Request access to the camera
-    //     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-    //         .then(stream => {
-    //             // Assign the stream to the video element
-    //             if (videoRef.current) {
-    //                 videoRef.current.srcObject = stream;
-    //             }
-    //         })
-    //         .catch(error => {
-    //             console.error("Error accessing media devices.", error);
-    //         });
+    useEffect(() => {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true })
+                .then(stream => {
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = stream;
+                    }
+                })
+                .catch(error => {
+                    console.error("Error accessing media devices.", error);
+                });
+        } else {
+            console.error("getUserMedia not supported on your browser!");
+        }
 
-    //     // Cleanup function to stop the stream when the component unmounts
-    //     return () => {
-    //         if (videoRef.current && videoRef.current.srcObject) {
-    //             const tracks = videoRef.current.srcObject.getTracks();
-    //             tracks.forEach(track => track.stop());
-    //         }
-    //     };
-    // }, []); 
+        return () => {
+            if (videoRef.current && videoRef.current.srcObject) {
+                const tracks = videoRef.current.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+        };
+    }, []);
 
 
 
@@ -109,6 +118,22 @@ const IndexPage = () => {
         });
     };
 
+    const captureDeviceFrame = () => {
+        const video = videoRef.current;
+        const canvas = document.getElementById("device-canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+
+        return new Promise((resolve, reject) => {
+            requestAnimationFrame(() => {
+                canvas.toBlob(resolve, 'image/png');
+            });
+        });
+    };
+
+
+
     const handleCapture = async () => {
         setIsScanning(true);
         setDetection(null);
@@ -138,10 +163,12 @@ const IndexPage = () => {
         const formattedDate = date.toLocaleString('en-US', options);
 
         const imageBlob = await captureFrame();
+        const deviceImageBlob = await captureDeviceFrame();
 
         const captureData = new FormData();
-        captureData.append('capturedFrame', imageBlob, formatDateTime(date) + ".png")
-        captureData.append('datetime', date)
+        captureData.append('capturedFrames', imageBlob, formatDateTime(date) + "_ipcam.png");
+        captureData.append('capturedFrames', deviceImageBlob, formatDateTime(date) + "_dvcam.png");
+        captureData.append('datetime', date);
 
         const config = {
             headers: {
@@ -234,11 +261,23 @@ const IndexPage = () => {
                         <span className='fs-5 fw-bold'>Live video feed</span>
                     </div>
                     <div className='d-flex align-items-start w-100 mt-3' >
-                        <div className='w-50'>
-                            <div className="video-feed mb-3">
-                                {/* <img id="feed" src={faceApiBaseUrl + "/video-feed"} alt="Live Video Feed" /> */}
-                                {/* <video ref={videoRef} autoPlay playsInline muted /> */}
-                                <canvas id="stream-canvas"></canvas>
+                        <div style={{ width: '60%' }}>
+                            <div className='w-100 d-flex align-items-start'>
+                                <div className="video-feed mb-3 w-50 me-1">
+                                    {/* <img id="feed" src={faceApiBaseUrl + "/video-feed"} alt="Live Video Feed" /> */}
+                                    {rtspLoading && (
+                                        <Spinner
+                                            className='position-absolute'
+                                            animation="border"
+                                            variant="light"
+                                        />
+                                    )}
+                                    <canvas id="stream-canvas" style={{backgroundColor: 'black'}}></canvas>
+                                </div>
+                                <div className="video-feed mb-3 w-50 ms-1">
+                                    <video ref={videoRef} autoPlay playsInline muted />
+                                    <canvas id="device-canvas" style={{ display: 'none' }}></canvas>
+                                </div>
                             </div>
                             <div className='d-flex align-items-center mb-3'>
                                 <Button
@@ -296,7 +335,7 @@ const IndexPage = () => {
                             )}
 
                         </div>
-                        <div className="w-50 ms-3">
+                        <div className="ms-3" style={{ width: '40%' }}>
                             <div className='fs-4 fw-bold'>Attendance</div>
                             {datetime && (
                                 <div className='fs-6 mb-3 opacity-75'>{datetime}</div>
