@@ -21,11 +21,8 @@ const IndexPage = () => {
     const videoRef = useRef(null);
     const [rtspLoading, setRtspLoading] = useState(true);
 
-    // const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.1.2:554/live/ch00_0"; // Appartment Network
-    // const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.1.2:554/live/ch00_0"; // Appartment Network
-    // const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.1.2:554/live/ch00_0"; // Appartment Network
-    // const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.1.2:554/live/ch00_0"; // Appartment Network
-    const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.254.104:554/live/ch00_0"; // Home Network
+    const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.1.2:554/live/ch00_0"; // Appartment Network
+    // const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.254.104:554/live/ch00_0"; // Home Network
 
     useEffect(() => {
         startRTSPFeed();
@@ -272,7 +269,7 @@ const IndexPage = () => {
                                             variant="light"
                                         />
                                     )}
-                                    <canvas id="stream-canvas" style={{backgroundColor: 'black'}}></canvas>
+                                    <canvas id="stream-canvas" style={{ backgroundColor: 'black' }}></canvas>
                                 </div>
                                 <div className="video-feed mb-3 w-50 ms-1">
                                     <video ref={videoRef} autoPlay playsInline muted />

@@ -20,16 +20,30 @@
 }
 
 header {
-  padding: 20px 30px;
+  padding: 20px 18px;
   color: var(--text-color);
   background-color: var(--page-header-color);
   display: flex;
   align-items: center;
-  justify-content: space-between;
 }
 
 body {
   background: var(--background-light);
+}
+
+.logo-div {
+  aspect-ratio: 1 / 1;
+  width: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.logo-div img {
+  height: 100%;
+  width: 100%;
+  object-fit: fill;
 }
 
 .video-feed {
@@ -50,15 +64,6 @@ body {
   height: 100%;
   width: 100%;
   object-fit: fill;
-}
-
-header {
-  padding: 20px 30px;
-  color: var(--text-color);
-  background-color: var(--page-header-color);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 
 .logo-text {
