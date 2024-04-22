@@ -27,8 +27,6 @@ os.makedirs(app.config['FACE_DATABASE'], exist_ok=True)
     
 output_folder = 'static'
 
-
-
 @app.route('/')
 def index():
     return render_template('index.html')

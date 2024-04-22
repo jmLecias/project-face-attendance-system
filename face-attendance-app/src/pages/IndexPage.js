@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import face_api, { faceApiBaseUrl, serverIp } from '../api/face_api';
+import { toDisplayText, toFilename } from '../services/DateFormatService';
 import { ToastContainer, toast } from 'react-toastify';
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
@@ -11,73 +12,18 @@ import RecognizedItem from '../components/items/RecognizedItem';
 import RecognizedLoadingItem from '../components/items/RecognizedLoadingItem';
 import UnknownItem from '../components/items/UnknownItem';
 
+import RtspFeed from '../components/feeds/RtspFeed';
+import WebcamFeed from '../components/feeds/WebcamFeed';
+
 import { RiLiveFill } from "react-icons/ri";
 import { FaCheckCircle } from "react-icons/fa";
 
-import JSMpeg from "@cycjimmy/jsmpeg-player";
-import axios from "axios";
 
-const IndexPage = () => {
+const IndexPage = () => {    
     const videoRef = useRef(null);
-    const [rtspLoading, setRtspLoading] = useState(true);
 
     const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.1.2:554/live/ch00_0"; // Appartment Network
     // const rtspurl = "rtsp://CAPSTONE:@CAPSTONE1@192.168.254.104:554/live/ch00_0"; // Home Network
-
-    useEffect(() => {
-        startRTSPFeed();
-        const url = 'ws://' + serverIp + ':9999';
-        let canvas = document.getElementById("stream-canvas");
-        const player = new JSMpeg.Player(String(url), {
-            canvas: canvas,
-            preserveDrawingBuffer: true,
-            onVideoDecode: () => setRtspLoading(false),
-        });
-
-
-        return () => {
-            stopRTSPFeed()
-        }
-    }, []);
-
-
-    const httpRequest = async (url) => {
-        axios.get(`http://${serverIp}:3002/stream?rtsp=${url}`);
-    };
-
-    const startRTSPFeed = () => {
-        httpRequest(rtspurl);
-    };
-
-    const stopRTSPFeed = () => {
-        httpRequest("stop");
-    };
-
-
-    useEffect(() => {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true })
-                .then(stream => {
-                    if (videoRef.current) {
-                        videoRef.current.srcObject = stream;
-                    }
-                })
-                .catch(error => {
-                    console.error("Error accessing media devices.", error);
-                });
-        } else {
-            console.error("getUserMedia not supported on your browser!");
-        }
-
-        return () => {
-            if (videoRef.current && videoRef.current.srcObject) {
-                const tracks = videoRef.current.srcObject.getTracks();
-                tracks.forEach(track => track.stop());
-            }
-        };
-    }, []);
-
-
 
     const [isScanning, setIsScanning] = useState(false);
     const [scanStatus, setScanStatus] = useState(null);
@@ -129,8 +75,6 @@ const IndexPage = () => {
         });
     };
 
-
-
     const handleCapture = async () => {
         setIsScanning(true);
         setDetection(null);
@@ -138,33 +82,14 @@ const IndexPage = () => {
         setDateTime(null)
 
         const date = new Date();
-
-        const dateOptions = {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        };
-
-        const timeOptions = {
-            hour: 'numeric',
-            minute: 'numeric',
-            second: 'numeric',
-            hour12: true
-        };
-
-        const options = {
-            ...dateOptions,
-            ...timeOptions
-        };
-
-        const formattedDate = date.toLocaleString('en-US', options);
+        const formattedDate = toDisplayText(date);
 
         const imageBlob = await captureFrame();
         const deviceImageBlob = await captureDeviceFrame();
 
         const captureData = new FormData();
-        captureData.append('capturedFrames', imageBlob, formatDateTime(date) + "_ipcam.png");
-        captureData.append('capturedFrames', deviceImageBlob, formatDateTime(date) + "_dvcam.png");
+        captureData.append('capturedFrames', imageBlob, toFilename(date) + "_ipcam.png");
+        captureData.append('capturedFrames', deviceImageBlob, toFilename(date) + "_dvcam.png");
         captureData.append('datetime', date);
 
         const config = {
@@ -233,17 +158,7 @@ const IndexPage = () => {
             })
 
     }
-
-    function formatDateTime(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
-
-        return `${year}-${month}-${day}--${hours}-${minutes}-${seconds}`;
-    }
+    
 
     return (
         <div className="listener-main-container" >
@@ -260,21 +175,14 @@ const IndexPage = () => {
                     <div className='d-flex align-items-start w-100 mt-3' >
                         <div style={{ width: '60%' }}>
                             <div className='w-100 d-flex align-items-start'>
-                                <div className="video-feed mb-3 w-50 me-1">
-                                    {/* <img id="feed" src={faceApiBaseUrl + "/video-feed"} alt="Live Video Feed" /> */}
-                                    {rtspLoading && (
-                                        <Spinner
-                                            className='position-absolute'
-                                            animation="border"
-                                            variant="light"
-                                        />
-                                    )}
-                                    <canvas id="stream-canvas" style={{ backgroundColor: 'black' }}></canvas>
-                                </div>
-                                <div className="video-feed mb-3 w-50 ms-1">
-                                    <video ref={videoRef} autoPlay playsInline muted />
-                                    <canvas id="device-canvas" style={{ display: 'none' }}></canvas>
-                                </div>
+                                <RtspFeed 
+                                    className='me-2 mb-3 w-50'
+                                    rtspUrl={rtspurl} 
+                                />
+                                <WebcamFeed 
+                                    className={'ms-2 w-50'} 
+                                    videoRef={videoRef}
+                                />
                             </div>
                             <div className='d-flex align-items-center mb-3'>
                                 <Button
