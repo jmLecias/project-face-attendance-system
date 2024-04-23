@@ -5,8 +5,8 @@ const ss = new StorageService();
 
 // const serverIp = '172.23.249.243'; 
 // const serverIp = '192.168.254.101';
-// const serverIp = '192.168.1.4';
-const serverIp = '192.168.1.13';
+const serverIp = '192.168.1.6';
+// const serverIp = '192.168.1.13';
 const flaskURL = `http://${((serverIp !== '') ? serverIp : 'localhost')}:5000`;
 const faceApiBaseUrl = flaskURL;
 

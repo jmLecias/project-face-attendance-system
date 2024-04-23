@@ -10,7 +10,7 @@ import { FaClipboardList } from "react-icons/fa";
 import { TiThMenu } from "react-icons/ti";
 import { AiFillSchedule } from "react-icons/ai";
 
-const ListenerSidebar = () => {
+const InstructorSidebar = () => {
     const navigate = useNavigate();
 
     const [collapse, setCollapse] = useState(true);
@@ -27,12 +27,12 @@ const ListenerSidebar = () => {
                 </SidebarHeader>
                 <Menu >
                     <MenuItem icon={<FaVideo size={22} />}><Link to="/">Live Attendance</Link></MenuItem>
-                    <MenuItem icon={<AiFillSchedule size={25} />}><Link to="/">Schedules</Link></MenuItem>
-                    <MenuItem icon={<FaClipboardList size={25} />}><Link to="/">Records</Link></MenuItem>
+                    {/* <MenuItem icon={<AiFillSchedule size={25} />}><Link to="/">Schedules</Link></MenuItem> */}
+                    <MenuItem icon={<FaClipboardList size={25} />}><Link to="/records">Records</Link></MenuItem>
                 </Menu>
             </SidebarContent>
         </ProSidebar>
     );
 }
 
-export default ListenerSidebar;
+export default InstructorSidebar;

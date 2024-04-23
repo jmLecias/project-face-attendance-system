@@ -183,6 +183,43 @@ def capture():
     
     return Response(json_data, mimetype='application/json')
 
+@app.route('/face-images', methods=['POST'])
+def face_images():
+    face_database_path = app.config['FACE_DATABASE']
+    
+    all_files = os.listdir(face_database_path)
+    
+    image_files = [file for file in all_files if file.endswith(('.jpg', '.png'))]
+    
+    json_data = json.dumps({"faceImages": image_files}, cls=NumpyArrayEncoder)
+    
+    return Response(json_data, mimetype='application/json')
+
+
+@app.route('/face/add', methods=['POST'])
+def face_add():
+    print("Adding face to database...")
+    
+    if 'face' not in request.files:
+        return jsonify({'error': 'No face part'}), 400
+    
+    face_image = request.files['face']
+    filename = request.form.get('name')
+    base_filename, file_extension = os.path.splitext(filename)
+    face_database_path = os.path.join(app.config['FACE_DATABASE'], filename)
+    
+    # Check if the file already exists and append a number if it does
+    counter = 1
+    while os.path.exists(face_database_path):
+        filename = f"{base_filename}_{counter}{file_extension}"
+        face_database_path = os.path.join(app.config['FACE_DATABASE'], filename)
+        counter += 1
+    
+    face_image.save(face_database_path)
+    
+    return jsonify({'success': 'Face added successfully'}), 200
+
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')

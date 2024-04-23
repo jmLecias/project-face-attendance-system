@@ -45,4 +45,4 @@ print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 # Using Command Prompt:
 # - Open a Command Prompt window.
 # - Type nvcc --version and press Enter.
-# - If CUDA is installed correctly, you should see the version of the CUDA Toolkit that is installed, along with the version of the NVIDIA GPU driver 1.
+# - If CUDA is installed correctly, you should see the version of the CUDA Toolkit that is installed, along with the version of the NVIDIA GPU driver 1.  
